@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <my-comp></my-comp>
+  </body>
+
+  <template rxweb-component="my-comp">
+    <h1>Hello World!</h1>
+    <p rxweb-if="counter <= 10">
+      positive counter:
+      <span rxweb-text-content="counterText"></span>
+    </p>
+    <button rxweb-click="increaseCounter(1, $event)">
+      increase by 1
+    </button>
+    <button rxweb-click="increaseCounter(2, $event)">
+      increase by 2
+    </button>
+  </template>
+  <script src="https://unpkg.com/rxjs/bundles/rxjs.umd.min.js"></script>
+  <script src="jsep.js"></script>
+  <script src="rxweb.js"></script>
+  <script src="demo.js"></script>
+</html>

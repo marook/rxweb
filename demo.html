@@ -15,6 +15,11 @@
     <button rxweb-click="increaseCounter(2, event)">
       increase by 2
     </button>
+    <ol>
+      <li rxweb-for="item of counterItems">
+        This is <span rxweb-text-content="item"></span>
+      </li>
+    </ol>
   </template>
   <script src="https://unpkg.com/rxjs/bundles/rxjs.umd.min.js"></script>
   <script src="jsep.js"></script>

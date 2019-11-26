@@ -12,6 +12,15 @@ rxweb.define('my-comp', events => {
         .subscribe();
     return {
         counter,
-        counterText: counter.pipe(map(c => `Count is ${c}.`)),
+        counterText: counter
+            .pipe(map(c => `Count is ${c}.`)),
+        counterItems: counter
+            .pipe(map(c => {
+                let items = [];
+                for(let i = 0; i < c; ++i){
+                    items.push(`${i}`);
+                }
+                return items;
+            }),
     };
 });

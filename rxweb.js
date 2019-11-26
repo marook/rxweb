@@ -7,7 +7,7 @@ let rxweb = (function(){
                 super();
                 this.subscriptions = [];
                 let [componentElement, events] = buildComponentElement(name);
-                let outputs = bind(events, this);
+                let outputs = bind(events);
                 let context = Object.assign({}, events, outputs);
                 bindComponentDomOutputs(componentElement, outputs);
                 bindComponentIfElements(componentElement, context);

@@ -48,7 +48,7 @@ let rxweb = (function(){
                 }
                 producer.addEventListener(event, e => {
                     let context = {
-                        '$event': e,
+                        'event': e,
                     };
                     let args = producerArgs.map(arg => evaluate(arg, context));
                     producerSubject.next(args);

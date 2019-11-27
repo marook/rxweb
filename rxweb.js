@@ -37,7 +37,6 @@ let rxweb = (function(){
             }
 
             connectedCallback(){
-                console.log('>>> connected', this); // TODO remove me
                 for(let j of this.rootJoints){
                     j.on();
                 }
@@ -47,7 +46,6 @@ let rxweb = (function(){
             }
 
             disconnectedCallback(){
-                console.log('>>> disconnected', this); // TODO remove me
                 if(this.componentSubscription){
                     this.componentSubscription.unsubscribe();
                     this.componentSubscription = null;
@@ -65,14 +63,13 @@ let rxweb = (function(){
      */
     function appendJoints(joints, element, context, events){
         // TODO find a good name for these "joints" we look for in this function and rename the name of the function
-        console.log(element); // TODO remove me
         let jointAttributes = Array.from(element.getAttributeNames())
             .filter(name => name.startsWith('rxweb-'))
             .map(name => name.substring('rxweb-'.length));
         let jointChildren = joints;
         if(jointAttributes.length === 0){
             for(let childElement of element.children){
-                appendJoints(jointChildren, childElement);
+                appendJoints(jointChildren, childElement, context, events);
             }
         } else if(jointAttributes.length === 1){
             let jointName = jointAttributes[0];
@@ -254,13 +251,59 @@ let rxweb = (function(){
         }
     };
 
-    function ForJoint(element){
-        this.element = element;
-        // TODO
+    function ForJoint(element, context, events){
+        // TODO right now we just threat parent like it has no other children than the for joint
+        let parent = element.parentNode;
+        this.itemTemplate = element;
+        element.parentNode.removeChild(element);
+        let {itemVariableName, itemsProviderName} = parseForExpression(element.getAttribute('rxweb-for'));
+        this.itemVariableName = itemVariableName;
+        this.rootJoints = [];
+        this.observable = context[itemsProviderName]
+            .pipe(tap(items => {
+                for(let j of this.rootJoints){
+                    j.off();
+                }
+                empty(parent);
+                this.rootJoints = [];
+                for(let item of items){
+                    let itemElement = this.itemTemplate.cloneNode(true);
+                    let itemContext = Object.assign({}, context);
+                    itemContext[this.itemVariableName] = rxjs.of(item);
+                    for(let element of itemElement.children){
+                        appendJoints(this.rootJoints, element, itemContext, events);
+                    }
+                    parent.appendChild(itemElement);
+                }
+                for(let j of this.rootJoints){
+                    j.on();
+                }
+            }));
+        this.subcription = null;
+    }
+
+    function parseForExpression(expression){
+        let [itemVariableName, itemsProviderName] = expression.split(' of ');
+        return {itemVariableName, itemsProviderName};
     }
 
     ForJoint.prototype.on = function(){
-        // TODO
+        if(!this.subscription){
+            this.subscription = this.observable.subscribe();
+        }
+        for(let j of this.rootJoints){
+            j.on();
+        }
+    };
+
+    ForJoint.prototype.off = function(){
+        if(this.subscription){
+            this.subscription.unsubscribe();
+            this.subscription = null;
+        }
+        for(let j of this.rootJoints){
+            j.off();
+        }
     };
 
     function TextContentJoint(element, context){
@@ -317,6 +360,12 @@ let rxweb = (function(){
                 return context[ast.name];
             case 'Literal':
                 return ast.value;
+        }
+    }
+
+    function empty(node){
+        while(node.lastChild){
+            node.removeChild(node.lastChild);
         }
     }
 

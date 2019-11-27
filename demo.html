@@ -6,8 +6,23 @@
 
   <template rxweb-component="my-comp">
     <h1>Hello World!</h1>
+    <!--
+        rxweb-text-content will subscribe for the counterText observable
+        and set the span's textContent property to the emitted values.
+      -->
     <span rxweb-text-content="counterText"></span>
+    <!--
+        rxweb-if will remove the nested nodes from the document if the
+        expression is falsy. each identifier in the expression must be
+        an observable.
+      -->
     <div rxweb-if="counter <= 10">
+      <!--
+          rxweb-click produces an observable with the name
+          "increaseCounter". every time the button is clicked the
+          increaseCounter observable will emit an array with the
+          arguments of the expression.
+        -->
       <button rxweb-click="increaseCounter(1, event)">
         increase by 1
       </button>
@@ -16,6 +31,12 @@
       increase by 2
     </button>
     <ol>
+      <!--
+          rxweb-for subscribes to the counterItems observable. the
+          counterItems observable is expected to emit an iterable (like
+          an array). for each iterable item one instance of the <li>
+          element is created and added to the document.
+        -->
       <li rxweb-for="item of counterItems">
         This is <span rxweb-text-content="item"></span>
       </li>

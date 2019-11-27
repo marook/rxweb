@@ -1,0 +1,21 @@
+rxweb - A reactive web framework
+
+1) Introduction
+2) Getting started
+
+
+------------------------------------------------------------------------
+Introduction
+
+rxweb is a templating library around rxjs and web components.
+
+
+------------------------------------------------------------------------
+Getting started
+
+You should probably read the following files in the given order:
+1. demo.html
+2. demo.js
+
+If the above was not enough:
+3. rxweb.js

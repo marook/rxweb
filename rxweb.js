@@ -1,10 +1,13 @@
 let rxweb = (function(){
-    let { map, tap, distinct } = rxjs.operators;
+    let { map, merge, tap, distinct } = rxjs.operators;
 
     let eventJointNames = [
         'click',
         'load',
+        'submit',
     ];
+
+    let eventJointNamesSet = new Set(eventJointNames);
 
     /**
      * jointFactories defines possible rxweb joints and their execution
@@ -13,7 +16,8 @@ let rxweb = (function(){
     let jointFactories = [
         ['if', IfJoint],
         ['for', ForJoint],
-        ['text-content', TextContentJoint],
+        ['text-content', ElementPropertyJoint],
+        ['class-name', ElementPropertyJoint],
     ].concat(eventJointNames.map(name => [name, EventListenerJoint]));
 
     let jointFactoryByName = new Map(jointFactories);
@@ -23,11 +27,18 @@ let rxweb = (function(){
             constructor(){
                 super();
                 let template = getTemplate(name).content.cloneNode(true);
-                let eventSubjects = collectEventSubjects(template);
+                let eventSubjects = new Map();
+                let getValues = (this.rxweb && this.rxweb.get) || {};
+                for(let [name, subject] of Object.entries(getValues)){
+                    eventSubjects.set(name, subject);
+                }
+                addEventSubjects(eventSubjects, template);
                 let events = Object.fromEntries(Array.from(eventSubjects).map(([name, subject]) => [name, subject.asObservable()]));
                 let outputs = bind(events);
-                let rootContext = Object.assign({}, events, outputs);
-                this.componentObservable = rootContext._ || rxjs.of();
+                let linkObservable = linkSubjectsToObservables(getValues, outputs);
+                let putValues = (this.rxweb && this.rxweb.put) || {};
+                let rootContext = Object.assign({}, putValues, events, outputs);
+                this.componentObservable = rxjs.merge(rootContext._ || rxjs.of(), linkObservable);
                 this.componentSubscription = null;
                 this.rootJoints = [];
                 for(let element of template.children){
@@ -66,27 +77,68 @@ let rxweb = (function(){
         let jointAttributes = Array.from(element.getAttributeNames())
             .filter(name => name.startsWith('rxweb-'))
             .map(name => name.substring('rxweb-'.length));
-        let jointChildren = joints;
         if(jointAttributes.length === 0){
             for(let childElement of element.children){
-                appendJoints(jointChildren, childElement, context, events);
+                appendJoints(joints, childElement, context, events);
             }
-        } else if(jointAttributes.length === 1){
-            let jointName = jointAttributes[0];
-            let jointFactory = jointFactoryByName.get(jointName);
-            if(!jointFactory){
-                throw new Error(`Found unknown rxweb-${jointName} attribute.`);
+            return;
+        }
+        for(let jointName of jointAttributes){
+            if(jointName.startsWith('get-')){
+                let producerExpression = element.getAttribute(`rxweb-${jointName}`);
+                let [producerName, producerArgs] = parseProducerExpression(producerExpression);
+                let remoteName = camelCase(jointName.substring('get-'.length));
+                let elementContext = getRxwebElementContext();
+                elementContext.get[remoteName] = events.get(producerName);
+            } else if(jointName.startsWith('put-')){
+                let localName = element.getAttribute(`rxweb-${jointName}`);
+                let remoteName = camelCase(jointName.substring('put-'.length));
+                let elementContext = getRxwebElementContext();
+                elementContext.put[remoteName] = context[localName];
+            } else {
+                let jointName = jointAttributes[0];
+                let jointFactory = jointFactoryByName.get(jointName);
+                if(!jointFactory){
+                    throw new Error(`Found unknown rxweb-${jointName} attribute.`);
+                }
+                let joint = new jointFactory(element, context, events, jointName);
+                joints.push(joint);
             }
-            let joint = new jointFactory(element, context, events, jointName);
-            joints.push(joint);
-            jointChildren = joint.children;
-        } else {
-            throw new Error(`Only one rxweb-* attribute per element allowed (right now, sorry)`);
+        }
+
+        function getRxwebElementContext(){
+            if(!element.rxweb){
+                element.rxweb = {};
+            }
+            if(!element.rxweb.get){
+                element.rxweb.get = {};
+            }
+            if(!element.rxweb.put){
+                element.rxweb.put = {};
+            }
+            return element.rxweb;
         }
     }
 
-    function collectEventSubjects(element){
-        let subjects = new Map();
+    function addEventSubjects(subjects, element){
+        for(let child of element.children){
+            for(let attributeName of child.getAttributeNames()){
+                if(!attributeName.startsWith('rxweb-')){
+                    continue;
+                }
+                let jointName = attributeName.substring('rxweb-'.length);
+                if(eventJointNamesSet.has(jointName) || jointName.startsWith('get-')){
+                    let producerExpression = child.getAttribute(attributeName);
+                    let [producerName, producerArgs] = parseProducerExpression(producerExpression);
+                    if(subjects.has(producerName)){
+                        continue;
+                    }
+                    subjects.set(producerName, new rxjs.Subject());
+                }
+            }
+            addEventSubjects(subjects, child);
+        }
+        
         for(let eventName of eventJointNames){
             let eventAttribute = `rxweb-${eventName}`;
             for(let producer of element.querySelectorAll(`*[${eventAttribute}]`)){
@@ -98,39 +150,35 @@ let rxweb = (function(){
                 subjects.set(producerName, new rxjs.Subject());
             }            
         }
-        return subjects;
     }
 
-    function buildComponentElement(name){
-        let element = getTemplate(name).content.cloneNode(true);
-        let subjects = new Map();
-        let events = {};
-        for(let event of ['click']){
-            let eventAttribute = `rxweb-${event}`;
-            for(let producer of element.querySelectorAll(`*[${eventAttribute}]`)){
-                let producerExpression = producer.getAttribute(eventAttribute);
-                let [producerName, producerArgs] = parseProducerExpression(producerExpression);
-                let producerSubject;
-                if(subjects.has(producerName)){
-                    producerSubject = subjects.get(producerName);
-                } else {
-                    producerSubject = new rxjs.Subject();
-                    subjects.set(producerName, producerSubject);
-                }
-                producer.addEventListener(event, e => {
-                    let context = {
-                        'event': e,
-                    };
-                    let args = producerArgs.map(arg => evaluate(arg, context));
-                    producerSubject.next(args);
-                }, false);
-                events[producerName] = producerSubject.asObservable();
+    function linkSubjectsToObservables(subjects, observables){
+        let matching = [];
+        for(let name of Object.keys(subjects)){
+            if(!observables.hasOwnProperty(name)){
+                continue;
             }
+            matching.push([
+                subjects[name],
+                observables[name],
+            ]);
         }
-        // TODO do some destroy eventing
-        let destroySubject = new rxjs.Subject();
-        events['destroy'] = destroySubject.asObservable();
-        return [element, events];
+        if(matching.length === 0){
+            return rxjs.of();
+        }
+        return rxjs.Observable.create(observer => {
+            let subscriptions = matching
+                .map(([subject, observable]) => {
+                    observable.subscribe(x => subject.next(x),
+                                         e => subject.error(e),
+                                         () => subject.complete());
+                });
+            return () => {
+                for(let subscription of subscriptions){
+                    subscription.unsubscribe();
+                }
+            };
+        });
     }
 
     function getTemplate(name){
@@ -306,21 +354,22 @@ let rxweb = (function(){
         }
     };
 
-    function TextContentJoint(element, context){
+    function ElementPropertyJoint(element, context, events, name){
         this.element = element;
-        let consumerName = element.getAttribute(`rxweb-text-content`);
+        let consumerName = element.getAttribute(`rxweb-${name}`);
+        let nameCamelCase = camelCase(name);
         this.observable = context[consumerName]
-            .pipe(tap(value => element.textContent = value));
+            .pipe(tap(value => element[nameCamelCase] = value));
         this.subscription = null;
     }
 
-    TextContentJoint.prototype.on = function(){
+    ElementPropertyJoint.prototype.on = function(){
         if(!this.subscription){
             this.subscription = this.observable.subscribe();
         }
     };
 
-    TextContentJoint.prototype.off = function(){
+    ElementPropertyJoint.prototype.off = function(){
         if(this.subscription){
             this.subscription.unsubscribe();
             this.subscription = null;
@@ -361,6 +410,17 @@ let rxweb = (function(){
             case 'Literal':
                 return ast.value;
         }
+    }
+
+    /**
+     * camelCase converts dash separated words into camel case.
+     */
+    function camelCase(input) { 
+        return input
+            .toLowerCase()
+            .replace(/-(.)/g, (m, g1) => {
+                return g1.toUpperCase();
+            });
     }
 
     function empty(node){

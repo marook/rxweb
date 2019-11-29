@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <todo-board></todo-board>
+  </body>
+
+  <template rxweb-component="todo-board">
+    <h1>TODO</h1>
+    <p>This is a TODO list demo application.</p>
+    <todo-list
+      rxweb-put-cards="cards"
+      rxweb-get-added-card="addCard(event)"></todo-list>
+  </template>
+
+  <template rxweb-component="todo-list">
+    <h2>List</h2>
+    <ul>
+      <li rxweb-for="card of cards">
+        <span rxweb-text-content="card"></span>
+      </li>
+    </ul>
+    <form rxweb-submit="submitCard(event)">
+      <input type="text" name="title"/>
+      <button>
+        +
+      </button>
+    </form>
+  </template>
+  
+  <script src="https://unpkg.com/rxjs/bundles/rxjs.umd.min.js"></script>
+  <script src="jsep.js"></script>
+  <script src="rxweb.js"></script>
+  <script src="todo.js"></script>
+</html>

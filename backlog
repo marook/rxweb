@@ -1,0 +1,10 @@
+* replace custom element API wrapping with API extension
+feedback from pitrp: Die frage ist, was sie soll.  Sie ruft ja direkt
+die funktion auf, die man benoetigt, also frage ich mich, wiese die
+"indirection"
+* remove .stopPropagation() calls from examples
+feedback from pitrp: Andere Sache die mir auffiel... warum
+grundsaetzlich und ausnahmslos .preventDefault() _UND_
+.stopPropagation()? Why would propagation hurt?  I know it bit me a lot
+of times because this pattern seems widespread and is a complete
+antipattern (if you ask me).

@@ -16,6 +16,8 @@ Getting started
 You should probably read the following files in the given order:
 1. demo.html
 2. demo.js
+3. todo.html
+4. todo.js
 
 If the above was not enough:
-3. rxweb.js
+5. rxweb.js

@@ -2,6 +2,7 @@ rxweb - A reactive web framework
 
 1) Introduction
 2) Getting started
+3) Installation in perkeep
 
 
 ------------------------------------------------------------------------
@@ -21,3 +22,9 @@ You should probably read the following files in the given order:
 
 If the above was not enough:
 5. rxweb.js
+
+
+------------------------------------------------------------------------
+Installation in perkeep
+
+$ make install

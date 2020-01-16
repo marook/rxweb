@@ -8,7 +8,7 @@ rxweb.define('todo-board', events => {
     ]);
     return {
         _: events.addCard
-            .pipe(tap(([card]) => {
+            .pipe(tap(card => {
                 let cards = cardsSubject.getValue().slice();
                 cards.push(card);
                 cardsSubject.next(cards);

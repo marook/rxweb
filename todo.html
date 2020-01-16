@@ -9,13 +9,21 @@
     <p>This is a TODO list demo application.</p>
     <todo-list
       rxweb-put-cards="cards"
-      rxweb-get-added-card="addCard(event)"></todo-list>
+      rxweb-get-added-card="addCard(event)"
+      rxweb-get-removed-card="removeCard(event)"></todo-list>
   </template>
 
   <template rxweb-component="todo-list">
     <h2>List</h2>
     <ul>
       <li rxweb-for="card of cards">
+        <!--
+            The button's rxweb-click attribute uses the * operator to
+            extract the last emitted value from the card observable.
+          -->
+        <button type="button" rxweb-click="removeCard(*card)">
+          -
+        </button>
         <span rxweb-text-content="card"></span>
       </li>
     </ul>

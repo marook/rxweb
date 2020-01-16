@@ -1,5 +1,8 @@
 let rxweb = (function(){
-    let { map, merge, tap, distinct } = rxjs.operators;
+    let { forkJoin, of } = rxjs;
+    let { map, merge, mergeMap, tap, distinct } = rxjs.operators;
+
+    jsep.addUnaryOp('*');
 
     let eventJointNames = [
         'click',
@@ -388,8 +391,9 @@ let rxweb = (function(){
         this.listener = domEvent => {
             // TODO prototypical inheritance
             let context = Object.assign({}, {event: domEvent}, this.context);
-            let args = producerArgs.map(arg => evaluate(arg, context));
-            this.subject.next(args);
+            forkJoin(producerArgs.map(arg => evaluate(arg, context)))
+                .subscribe(x => this.subject.next(x),
+                           e => this.subject.error(e));
         };
     }
 
@@ -406,9 +410,17 @@ let rxweb = (function(){
             default:
                 throw new Error(`Unknown type: ${ast.type}`);
             case 'Identifier':
-                return context[ast.name];
+                return of(context[ast.name]);
             case 'Literal':
-                return ast.value;
+                return of(ast.value);
+            case 'UnaryExpression':
+                switch(ast.operator){
+                    default:
+                        throw new Error(`Unknown unary operator: ${ast.operator}`);
+                    case '*':
+                        return evaluate(ast.argument, context)
+                            .pipe(mergeMap(v => v));
+                }
         }
     }
 

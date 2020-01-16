@@ -1,3 +1,4 @@
+let { merge } = rxjs;
 let { map, tap } = rxjs.operators;
 
 rxweb.define('todo-board', events => {
@@ -6,13 +7,18 @@ rxweb.define('todo-board', events => {
         'walk dog',
         'water plants',
     ]);
+    let addCard = events.addCard
+        .pipe(tap(card => {
+            let cards = cardsSubject.getValue().slice();
+            cards.push(card);
+            cardsSubject.next(cards);
+        }));
+    let removeCard = events.removeCard
+        .pipe(tap(card => {
+            cardsSubject.next(cardsSubject.getValue().filter(c => c !== card));
+        }));
     return {
-        _: events.addCard
-            .pipe(tap(card => {
-                let cards = cardsSubject.getValue().slice();
-                cards.push(card);
-                cardsSubject.next(cards);
-            })),
+        _: merge(addCard, removeCard),
         cards: cardsSubject.asObservable(),
     };
 });
@@ -25,6 +31,10 @@ rxweb.define('todo-list', events => {
                 let cardTitle = event.target.title.value;
                 event.target.title.value = '';
                 return cardTitle;
+            })),
+        removedCard: events.removeCard
+            .pipe(map(([card]) => {
+                return card;
             })),
     };
 });

@@ -22,7 +22,6 @@ rxweb.define('todo-list', events => {
         addedCard: events.submitCard
             .pipe(map(([event]) => {
                 event.preventDefault();
-                event.stopPropagation();
                 let cardTitle = event.target.title.value;
                 event.target.title.value = '';
                 return cardTitle;

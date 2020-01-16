@@ -13,7 +13,6 @@ rxweb.define('my-comp', events => {
         _: events.increaseCounter
             .pipe(map(([inc, $event]) => {
                 $event.preventDefault();
-                $event.stopPropagation();
                 counter.next(counter.getValue() + inc);
             })),
         counter,

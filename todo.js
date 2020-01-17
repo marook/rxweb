@@ -3,9 +3,15 @@ let { map, tap } = rxjs.operators;
 
 rxweb.define('todo-board', events => {
     let cardsSubject = new rxjs.BehaviorSubject([
-        'bring out trash',
-        'walk dog',
-        'water plants',
+        {
+            title: 'bring out trash',
+        },
+        {
+            title: 'walk dog',
+        },
+        {
+            title: 'water plants',
+        },
     ]);
     let addCard = events.addCard
         .pipe(tap(card => {
@@ -30,7 +36,9 @@ rxweb.define('todo-list', events => {
                 event.preventDefault();
                 let cardTitle = event.target.title.value;
                 event.target.title.value = '';
-                return cardTitle;
+                return {
+                    title: cardTitle,
+                };
             })),
         removedCard: events.removeCard
             .pipe(map(([card]) => {

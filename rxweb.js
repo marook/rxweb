@@ -29,13 +29,13 @@ let rxweb = (function(){
         customElements.define(name, class extends HTMLElement {
             constructor(){
                 super();
-                let template = getTemplate(name).content.cloneNode(true);
+                this.template = getTemplate(name).content.cloneNode(true);
                 let eventSubjects = new Map();
                 let getValues = (this.rxweb && this.rxweb.get) || {};
                 for(let [name, subject] of Object.entries(getValues)){
                     eventSubjects.set(name, subject);
                 }
-                addEventSubjects(eventSubjects, template);
+                addEventSubjects(eventSubjects, this.template);
                 let events = Object.fromEntries(Array.from(eventSubjects).map(([name, subject]) => [name, subject.asObservable()]));
                 let outputs = bind(events);
                 let linkObservable = linkSubjectsToObservables(getValues, outputs);
@@ -44,13 +44,13 @@ let rxweb = (function(){
                 this.componentObservable = rxjs.merge(rootContext._ || rxjs.of(), linkObservable);
                 this.componentSubscription = null;
                 this.rootJoints = [];
-                for(let element of template.children){
+                for(let element of this.template.children){
                     appendJoints(this.rootJoints, element, rootContext, eventSubjects);
                 }
-                this.appendChild(template);
             }
 
             connectedCallback(){
+                this.appendChild(this.template);
                 for(let j of this.rootJoints){
                     j.on();
                 }
@@ -67,6 +67,7 @@ let rxweb = (function(){
                 for(let j of this.rootJoints){
                     j.off();
                 }
+                empty(this);
             }
         });
     }

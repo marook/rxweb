@@ -1,15 +1,18 @@
-let { merge } = rxjs;
+let { merge, of } = rxjs;
 let { map, tap } = rxjs.operators;
 
 rxweb.define('todo-board', events => {
     let cardsSubject = new rxjs.BehaviorSubject([
         {
+            createdAt: new Date(2019, 11, 1),
             title: 'bring out trash',
         },
         {
+            createdAt: new Date(2020, 0, 1),
             title: 'walk dog',
         },
         {
+            createdAt: new Date(2017, 4, 31),
             title: 'water plants',
         },
     ]);
@@ -37,6 +40,7 @@ rxweb.define('todo-list', events => {
                 let cardTitle = event.target.title.value;
                 event.target.title.value = '';
                 return {
+                    createdAt: new Date(),
                     title: cardTitle,
                 };
             })),
@@ -44,5 +48,6 @@ rxweb.define('todo-list', events => {
             .pipe(map(([card]) => {
                 return card;
             })),
+        date: of(map(d => `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`)),
     };
 });

@@ -25,6 +25,13 @@
           -
         </button>
         <span rxweb-text-content="card.title"></span>
+        (
+        <!--
+            The pipe operator supports the same arguments like the rxjs
+            .pipe(…) method.
+          -->
+        <span rxweb-text-content="card.createdAt | date"></span>
+        )
       </li>
     </ul>
     <form rxweb-submit="submitCard(event)">

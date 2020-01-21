@@ -253,7 +253,7 @@ let rxweb = (function(){
                     }
                     let identifierValue = context[ast.name];
                     if(!identifierValue){
-                        throw new Error(`Unknown variable ${ast.name} in rxweb-if expression.`);
+                        throw new Error(`Unknown variable '${ast.name}' in rxweb expression.`);
                     }
                     identifierIndex.set(ast.name, identifierObservables.length);
                     identifierObservables.push(context[ast.name]);
@@ -278,12 +278,14 @@ let rxweb = (function(){
                         evaluateAst(ast.left, identifierValues),
                         evaluateAst(ast.right, identifierValues),
                     )
-                        .pipe(map(([leftValue, rightValue]) => {
+                        .pipe(mergeMap(([leftValue, rightValue]) => {
                             switch(ast.operator){
                                 default:
                                     throw new Error(`Unknown operator ${ast.operator}`);
                                 case '<=':
-                                    return leftValue <= rightValue;
+                                    return of(leftValue <= rightValue);
+                                case '|':
+                                    return of(leftValue).pipe(rightValue);
                             }
                         }));
                     break;

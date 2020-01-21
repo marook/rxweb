@@ -301,6 +301,9 @@ let rxweb = (function(){
                     switch(ast.operator){
                         default:
                             throw new Error(`Unknown unary operater ${ast.operator}`);
+                        case '!':
+                            return evaluateAst(ast.argument, identifierValues)
+                                .pipe(map(v => !v));
                         case '*':
                             return evaluateAst(ast.argument, identifierValues)
                                 .pipe(mergeMap(v => v));

@@ -1,6 +1,6 @@
 let rxweb = (function(){
     let { combineLatest, forkJoin, of } = rxjs;
-    let { map, merge, mergeMap, tap, distinct } = rxjs.operators;
+    let { map, merge, mergeMap, tap, distinctUntilChanged } = rxjs.operators;
 
     jsep.addUnaryOp('*');
 
@@ -204,8 +204,10 @@ let rxweb = (function(){
     }
 
     function IfJoint(element, context, events){
+        this.hook = addHookBefore(element);
         this.element = element;
         this.rootJoints = [];
+        this.removeElement();
         for(let child of element.children){
             appendJoints(this.rootJoints, child, context, events);
         }
@@ -213,11 +215,10 @@ let rxweb = (function(){
         this.observable = evaluateObservableExpression(jsep(ifExpression), context)
             .pipe(
                 map(v => !!v),
-                distinct(),
+                distinctUntilChanged(),
                 tap(showElement => {
-                    element.style.display = showElement ? 'block' : 'none';
-                    // TODO remove and back insert element in DOM instead of modifying display style
                     if(showElement){
+                        this.addElement();
                         for(let j of this.rootJoints){
                             j.on();
                         }
@@ -225,11 +226,23 @@ let rxweb = (function(){
                         for(let j of this.rootJoints){
                             j.off();
                         }
+                        this.removeElement();
                     }
                 })
             );
         this.subscription = null;
     }
+
+    IfJoint.prototype.addElement = function(){
+        this.hook.parentNode.insertBefore(this.element, this.hook);
+    };
+
+    IfJoint.prototype.removeElement = function(){
+        let parent = this.element.parentNode;
+        if(parent){
+            parent.removeChild(this.element);
+        }
+    };
 
     function evaluateObservableExpression(ast, context){
         let identifierIndex = new Map();
@@ -330,8 +343,7 @@ let rxweb = (function(){
     };
 
     function ForJoint(element, context, events){
-        let hook = document.createComment('rxweb-hook');
-        element.parentNode.insertBefore(hook, element);
+        let hook = addHookBefore(element);
         this.itemTemplate = element;
         element.parentNode.removeChild(element);
         let {itemVariableName, itemsProviderName} = parseForExpression(element.getAttribute('rxweb-for'));
@@ -475,6 +487,12 @@ let rxweb = (function(){
         while(node.lastChild){
             node.removeChild(node.lastChild);
         }
+    }
+
+    function addHookBefore(element){
+        let hook = document.createElement('rxweb-hook');
+        element.parentNode.insertBefore(hook, element);
+        return hook;
     }
 
     return {

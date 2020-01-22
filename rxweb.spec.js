@@ -134,6 +134,36 @@ describe('rxweb', () => {
         });
     });
 
+    describeComponent('<span rxweb-if="myFlag">flag</span>', ['myFlag'], (events, outputSubjects) => {
+        beforeEach(() => {
+            outputSubjects.myFlag.next(false);
+        });
+
+        it('should not show flag', () => {
+            expect(contentContainer.textContent).toBe('');
+        });
+
+        describe('set flag', () => {
+            beforeEach(() => {
+                outputSubjects.myFlag.next(true);
+            });
+
+            it('should show flag', () => {
+                expect(contentContainer.textContent).toBe('flag');
+            });
+        });
+    });
+
+    describeComponent('before <span rxweb-if="myFlag">flag</span> after', ['myFlag'], (events, outputSubjects) => {
+        beforeEach(() => {
+            outputSubjects.myFlag.next(true);
+        });
+
+        it('should not show flag', () => {
+            expect(contentContainer.textContent).toBe('before flag after');
+        });
+    });
+
     function describeComponent(body, outputNames, f){
         let componentName = `rxweb-test-component-${nextComponentId++}`;
         describe(`the template ${body}`, () => {

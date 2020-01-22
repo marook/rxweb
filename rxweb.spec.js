@@ -121,6 +121,19 @@ describe('rxweb', () => {
         });
     });
 
+    describeComponent('<span rxweb-for="i of items"><span rxweb-text-content="i"></span></span>', ['items'], (events, outputSubjects) => {
+        beforeEach(() => {
+            outputSubjects.items.next([
+                'a',
+                'b',
+            ]);
+        });
+
+        it('should produce xx text content', () => {
+            expect(contentContainer.textContent).toBe('ab');
+        });
+    });
+
     function describeComponent(body, outputNames, f){
         let componentName = `rxweb-test-component-${nextComponentId++}`;
         describe(`the template ${body}`, () => {

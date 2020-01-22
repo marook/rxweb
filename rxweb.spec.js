@@ -1,5 +1,7 @@
 describe('rxweb', () => {
-    let { BehaviorSubject, of } = rxjs;
+    let { Subject, of } = rxjs;
+
+    let nextComponentId = 1;
     
     let templateContainer, contentContainer, element;
     beforeAll(() => {
@@ -14,45 +16,16 @@ describe('rxweb', () => {
         document.body.removeChild(templateContainer);
         templateContainer = undefined;
     });
-    
-    describe('hello-world component', () => {
-        beforeAllAddTemplate('hello-world', '<h1>Hello World!</h1>');
-        beforeAllDefineComponent('hello-world', events => ({}));
-        beforeAllInstantiateComponent('hello-world');
-        
+
+    describeComponent('<h1>Hello World!</h1>', [], () => {
         it('should have text content "Hello World!"', () => {
             expect(contentContainer.textContent).toBe('Hello World!');
         });
     });
 
-    describe('rxweb-text-content static', () => {
-        beforeAllAddTemplate('rxweb-text-content-static-comp', '<span rxweb-text-content="myInput"></span>');
-        beforeAllDefineComponent('rxweb-text-content-static-comp', events => ({
-            myInput: of('some text'),
-        }));
-        beforeAllInstantiateComponent('rxweb-text-content-static-comp');
-
-        it('should render some text', () => {
-            expect(contentContainer.textContent).toBe('some text');
-        });
-    });
-
-    describe('rxweb-text-content dynamic', () => {
-        let myInput;
-        beforeAll(() => {
-            myInput = new BehaviorSubject('');
-        });
-        afterAll(() => {
-            myInput = undefined;
-        });
-        beforeAllAddTemplate('rxweb-text-content-dynamic-comp', '<span rxweb-text-content="myInput"></span>');
-        beforeAllDefineComponent('rxweb-text-content-dynamic-comp', events => ({
-            myInput: myInput.asObservable(),
-        }));
-        beforeAllInstantiateComponent('rxweb-text-content-dynamic-comp');
-
+    describeComponent('<span rxweb-text-content="myInput"></span>', ['myInput'], (events, outputs) => {
         beforeEach(() => {
-            myInput.next('initial');
+            outputs.myInput.next('initial');
         });
 
         it('should render initial', () => {
@@ -61,7 +34,7 @@ describe('rxweb', () => {
 
         describe('change myInput', () => {
             beforeEach(() => {
-                myInput.next('changed');
+                outputs.myInput.next('changed');
             });
 
             it('should render changed', () => {
@@ -69,6 +42,36 @@ describe('rxweb', () => {
             });
         });
     });
+
+    function describeComponent(body, outputNames, f){
+        let componentName = `rxweb-test-component-${nextComponentId++}`;
+        describe(`the template ${body}`, () => {
+            let events, outputSubjects = {};
+            beforeAll(() => {
+                for(let name of outputNames){
+                    outputSubjects[name] = new Subject();
+                }
+            });
+            afterAll(() => {
+                outputSubjects = undefined;
+            });
+            beforeAllAddTemplate(componentName, body);
+            beforeAllDefineComponent(componentName, _events_ => {
+                events = _events_;
+                let output = {};
+                for(let k of outputNames){
+                    output[k] = outputSubjects[k].asObservable();
+                }
+                return output;
+            });
+            afterAll(() => {
+                events = undefined;
+            });
+            beforeAllInstantiateComponent(componentName);
+
+            f(events, outputSubjects);
+        });
+    }
 
     function beforeAllAddTemplate(componentName, body){
         beforeAll(() => {

@@ -43,10 +43,62 @@ describe('rxweb', () => {
         });
     });
 
+    describeComponent('<button type="button" rxweb-click="peng()">peng</button>', [], events => {
+        let pengEmits, pengSubscription;
+        beforeEach(() => {
+            pengEmits = [];
+            pengSubscription = events.peng.subscribe(x => pengEmits.push(x));
+        });
+        afterEach(() => {
+            pengSubscription.unsubscribe();
+            pengSubscription = undefined;
+        });
+
+        it('should retrieve no emit', () => {
+            expect(pengEmits).toEqual([]);
+        });
+
+        describe('click button', () => {
+            beforeEach(() => {
+                contentContainer.querySelector('button').click();
+            });
+
+            it('should retrieve one emit', () => {
+                expect(pengEmits).toEqual([
+                    [],
+                ]);
+            });
+        });
+    });
+
+    describeComponent('<button type="button" rxweb-click="peng(event)">peng</button>', [], events => {
+        let pengEmits, pengSubscription;
+        beforeEach(() => {
+            pengEmits = [];
+            pengSubscription = events.peng.subscribe(x => pengEmits.push(x));
+        });
+        afterEach(() => {
+            pengSubscription.unsubscribe();
+            pengSubscription = undefined;
+        });
+
+        describe('click button', () => {
+            beforeEach(() => {
+                contentContainer.querySelector('button').click();
+            });
+
+            it('should retrieve one emit', () => {
+                expect(pengEmits.length).toBe(1);
+                let [event] = pengEmits[0];
+                expect(event instanceof MouseEvent).toBe(true);
+            });
+        });
+    });
+
     function describeComponent(body, outputNames, f){
         let componentName = `rxweb-test-component-${nextComponentId++}`;
         describe(`the template ${body}`, () => {
-            let events, outputSubjects = {};
+            let events = {}, outputSubjects = {};
             beforeAll(() => {
                 for(let name of outputNames){
                     outputSubjects[name] = new Subject();
@@ -57,7 +109,7 @@ describe('rxweb', () => {
             });
             beforeAllAddTemplate(componentName, body);
             beforeAllDefineComponent(componentName, _events_ => {
-                events = _events_;
+                Object.assign(events, _events_);
                 let output = {};
                 for(let k of outputNames){
                     output[k] = outputSubjects[k].asObservable();

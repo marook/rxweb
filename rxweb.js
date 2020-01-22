@@ -418,8 +418,8 @@ let rxweb = (function(){
         this.listener = domEvent => {
             // TODO prototypical inheritance
             let context = Object.assign({}, {event: domEvent}, this.context);
-            forkJoin(producerArgs.map(arg => evaluate(arg, context)))
-                .subscribe(x => this.subject.next(x),
+            let args = producerArgs.length === 0 ? of([]) : forkJoin(producerArgs.map(arg => evaluate(arg, context)));
+            args.subscribe(x => this.subject.next(x),
                            e => this.subject.error(e));
         };
     }

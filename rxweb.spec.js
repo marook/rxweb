@@ -164,6 +164,18 @@ describe('rxweb', () => {
         });
     });
 
+    describeComponent('<span rxweb-text-content="myValue.key"></span>', ['myValue'], (events, outputSubjects) => {
+        beforeEach(() => {
+            outputSubjects.myValue.next({
+                key: 'value',
+            });
+        });
+
+        it('should not show value', () => {
+            expect(contentContainer.textContent).toBe('value');
+        });
+    });
+
     function describeComponent(body, outputNames, f){
         let componentName = `rxweb-test-component-${nextComponentId++}`;
         describe(`the template ${body}`, () => {

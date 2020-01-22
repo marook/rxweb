@@ -490,7 +490,7 @@ let rxweb = (function(){
     }
 
     function addHookBefore(element){
-        let hook = document.createElement('rxweb-hook');
+        let hook = document.createComment('rxweb-hook');
         element.parentNode.insertBefore(hook, element);
         return hook;
     }

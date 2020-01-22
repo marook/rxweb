@@ -95,6 +95,32 @@ describe('rxweb', () => {
         });
     });
 
+    describeComponent('before<span rxweb-for="_ of items">x</span>after', ['items'], (events, outputSubjects) => {
+        beforeEach(() => {
+            outputSubjects.items.next([
+                0,
+                1,
+            ]);
+        });
+
+        it('should produce xx text content', () => {
+            expect(contentContainer.textContent).toBe('beforexxafter');
+        });
+    });
+
+    describeComponent('<div><span rxweb-for="_ of items">x</span></div>', ['items'], (events, outputSubjects) => {
+        beforeEach(() => {
+            outputSubjects.items.next([
+                0,
+                1,
+            ]);
+        });
+
+        it('should produce xx text content', () => {
+            expect(contentContainer.textContent).toBe('xx');
+        });
+    });
+
     function describeComponent(body, outputNames, f){
         let componentName = `rxweb-test-component-${nextComponentId++}`;
         describe(`the template ${body}`, () => {

@@ -330,19 +330,20 @@ let rxweb = (function(){
     };
 
     function ForJoint(element, context, events){
-        // TODO right now we just threat parent like it has no other children than the for joint
-        let parent = element.parentNode;
+        let hook = document.createComment('rxweb-hook');
+        element.parentNode.insertBefore(hook, element);
         this.itemTemplate = element;
         element.parentNode.removeChild(element);
         let {itemVariableName, itemsProviderName} = parseForExpression(element.getAttribute('rxweb-for'));
         this.itemVariableName = itemVariableName;
         this.rootJoints = [];
+        this.itemElements = [];
         this.observable = context[itemsProviderName]
             .pipe(tap(items => {
                 for(let j of this.rootJoints){
                     j.off();
                 }
-                empty(parent);
+                this.removeFormerItemElements();
                 this.rootJoints = [];
                 for(let item of items){
                     let itemElement = this.itemTemplate.cloneNode(true);
@@ -351,7 +352,8 @@ let rxweb = (function(){
                     for(let element of itemElement.children){
                         appendJoints(this.rootJoints, element, itemContext, events);
                     }
-                    parent.appendChild(itemElement);
+                    this.itemElements.push(itemElement);
+                    hook.parentNode.insertBefore(itemElement, hook);
                 }
                 for(let j of this.rootJoints){
                     j.on();
@@ -359,6 +361,13 @@ let rxweb = (function(){
             }));
         this.subcription = null;
     }
+
+    ForJoint.prototype.removeFormerItemElements = function(){
+        for(let element of this.itemElements){
+            element.parentNode.removeChild(element);
+        }
+        this.itemElements = [];
+    };
 
     function parseForExpression(expression){
         let [itemVariableName, itemsProviderName] = expression.split(' of ');

@@ -360,7 +360,7 @@ let rxweb = (function(){
                 }
                 this.removeFormerItemElements();
                 this.rootJoints = [];
-                for(let item of items){
+                for(let item of items || []){
                     let itemElement = this.itemTemplate.cloneNode(true);
                     let itemContext = Object.assign({}, context);
                     itemContext[this.itemVariableName] = rxjs.of(item);

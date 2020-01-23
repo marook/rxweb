@@ -96,15 +96,37 @@ describe('rxweb', () => {
     });
 
     describeComponent('before<span rxweb-for="_ of items">x</span>after', ['items'], (events, outputSubjects) => {
-        beforeEach(() => {
-            outputSubjects.items.next([
-                0,
-                1,
-            ]);
+        describe('myArray=[0, 1]', () => {
+            beforeEach(() => {
+                outputSubjects.items.next([
+                    0,
+                    1,
+                ]);
+            });
+
+            it('should produce xx text content', () => {
+                expect(contentContainer.textContent).toBe('beforexxafter');
+            });
         });
 
-        it('should produce xx text content', () => {
-            expect(contentContainer.textContent).toBe('beforexxafter');
+        describe('myArray=null', () => {
+            beforeEach(() => {
+                outputSubjects.items.next(null);
+            });
+
+            it('should produce beforeafter text content', () => {
+                expect(contentContainer.textContent).toBe('beforeafter');
+            });
+        });
+
+        describe('myArray=undefined', () => {
+            beforeEach(() => {
+                outputSubjects.items.next(undefined);
+            });
+
+            it('should produce beforeafter text content', () => {
+                expect(contentContainer.textContent).toBe('beforeafter');
+            });
         });
     });
 

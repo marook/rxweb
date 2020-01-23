@@ -44,9 +44,7 @@ let rxweb = (function(){
                 this.componentObservable = rxjs.merge(rootContext._ || rxjs.of(), linkObservable);
                 this.componentSubscription = null;
                 this.rootJoints = [];
-                for(let element of this.template.children){
-                    appendJoints(this.rootJoints, element, rootContext, eventSubjects);
-                }
+                appendChildJoints(this.rootJoints, this.template, rootContext, eventSubjects);
             }
 
             connectedCallback(){
@@ -72,6 +70,15 @@ let rxweb = (function(){
         });
     }
 
+    function appendChildJoints(joints, parent, context, events){
+        // Array.from(…) copies the nodes before the
+        // appendJoints(…) call might modify the template
+        // elements and break the iteration here.
+        for(let element of Array.from(parent.children)){
+            appendJoints(joints, element, context, events);
+        }
+    }
+
     /**
      * appendJoints searches for the first layer of dynamic elements in
      * the template element.
@@ -82,9 +89,7 @@ let rxweb = (function(){
             .filter(name => name.startsWith('rxweb-'))
             .map(name => name.substring('rxweb-'.length));
         if(jointAttributes.length === 0){
-            for(let childElement of element.children){
-                appendJoints(joints, childElement, context, events);
-            }
+            appendChildJoints(joints, element, context, events);
             return;
         }
         for(let jointName of jointAttributes){
@@ -208,9 +213,7 @@ let rxweb = (function(){
         this.element = element;
         this.rootJoints = [];
         this.removeElement();
-        for(let child of element.children){
-            appendJoints(this.rootJoints, child, context, events);
-        }
+        appendChildJoints(this.rootJoints, element, context, events);
         let ifExpression = element.getAttribute('rxweb-if');
         this.observable = evaluateObservableExpression(jsep(ifExpression), context)
             .pipe(
@@ -361,9 +364,7 @@ let rxweb = (function(){
                     let itemElement = this.itemTemplate.cloneNode(true);
                     let itemContext = Object.assign({}, context);
                     itemContext[this.itemVariableName] = rxjs.of(item);
-                    for(let element of itemElement.children){
-                        appendJoints(this.rootJoints, element, itemContext, events);
-                    }
+                    appendChildJoints(this.rootJoints, itemElement, itemContext, events);
                     this.itemElements.push(itemElement);
                     hook.parentNode.insertBefore(itemElement, hook);
                 }

@@ -171,8 +171,19 @@ describe('rxweb', () => {
             });
         });
 
-        it('should not show value', () => {
+        it('should show value', () => {
             expect(contentContainer.textContent).toBe('value');
+        });
+    });
+
+    describeComponent('<span rxweb-if="myFlag">1</span><span rxweb-for="_ of myArray">x</span>', ['myFlag', 'myArray'], (events, outputSubjects) => {
+        beforeEach(() => {
+            outputSubjects.myFlag.next(true);
+            outputSubjects.myArray.next([0, 1]);
+        });
+
+        it('should show 1 and x', () => {
+            expect(contentContainer.textContent).toBe('1xx');
         });
     });
 

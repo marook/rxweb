@@ -258,73 +258,90 @@ let rxweb = (function(){
 
         function collectIdentifiers(ast){
             switch(ast.type){
-                default:
-                    throw new Error(`Unknown type: ${ast.type}`);
-                case 'BinaryExpression':
-                    collectIdentifiers(ast.left);
-                    collectIdentifiers(ast.right);
+            default:
+                throw new Error(`Unknown type: ${ast.type}`);
+            case 'BinaryExpression':
+            case 'LogicalExpression':
+                collectIdentifiers(ast.left);
+                collectIdentifiers(ast.right);
+                break;
+            case 'Identifier':
+                if(identifierIndex.has(ast.name)){
                     break;
-                case 'Identifier':
-                    if(identifierIndex.has(ast.name)){
-                        break;
-                    }
-                    let identifierValue = context[ast.name];
-                    if(!identifierValue){
-                        throw new Error(`Unknown variable '${ast.name}' in rxweb expression.`);
-                    }
-                    identifierIndex.set(ast.name, identifierObservables.length);
-                    identifierObservables.push(context[ast.name]);
-                    break;
-                case 'Literal':
-                    break;
-                case 'MemberExpression':
-                    collectIdentifiers(ast.object);
-                    break;
-                case 'UnaryExpression':
-                    collectIdentifiers(ast.argument);
-                    break;
+                }
+                let identifierValue = context[ast.name];
+                if(!identifierValue){
+                    throw new Error(`Unknown variable '${ast.name}' in rxweb expression.`);
+                }
+                identifierIndex.set(ast.name, identifierObservables.length);
+                identifierObservables.push(context[ast.name]);
+                break;
+            case 'Literal':
+                break;
+            case 'MemberExpression':
+                collectIdentifiers(ast.object);
+                break;
+            case 'UnaryExpression':
+                collectIdentifiers(ast.argument);
+                break;
             }
         }
 
         function evaluateAst(ast, identifierValues){
             switch(ast.type){
-                default:
-                    throw new Error(`Unknown type: ${ast.type}`);
-                case 'BinaryExpression':
-                    return combineLatest(
-                        evaluateAst(ast.left, identifierValues),
-                        evaluateAst(ast.right, identifierValues),
-                    )
-                        .pipe(mergeMap(([leftValue, rightValue]) => {
-                            switch(ast.operator){
-                                default:
-                                    throw new Error(`Unknown operator ${ast.operator}`);
-                                case '<=':
-                                    return of(leftValue <= rightValue);
-                                case '|':
-                                    return of(leftValue).pipe(rightValue);
-                            }
-                        }));
-                    break;
-                case 'Identifier':
-                    let i = identifierIndex.get(ast.name);
-                    return of(identifierValues[i]);
-                case 'Literal':
-                    return of(ast.value);
-                case 'MemberExpression':
-                    return evaluateAst(ast.object, identifierValues)
-                        .pipe(map(v => v[ast.property.name]));
-                case 'UnaryExpression':
-                    switch(ast.operator){
+            default:
+                throw new Error(`Unknown type: ${ast.type}`);
+            case 'BinaryExpression':
+            case 'LogicalExpression':
+                return combineLatest(
+                    evaluateAst(ast.left, identifierValues),
+                    evaluateAst(ast.right, identifierValues),
+                )
+                    .pipe(mergeMap(([leftValue, rightValue]) => {
+                        switch(ast.operator){
                         default:
-                            throw new Error(`Unknown unary operater ${ast.operator}`);
-                        case '!':
-                            return evaluateAst(ast.argument, identifierValues)
-                                .pipe(map(v => !v));
-                        case '*':
-                            return evaluateAst(ast.argument, identifierValues)
-                                .pipe(mergeMap(v => v));
-                    }
+                            throw new Error(`Unknown operator ${ast.operator}`);
+                        case '==':
+                            return of(leftValue == rightValue);
+                        case '===':
+                            return of(leftValue === rightValue);
+                        case '<':
+                            return of(leftValue < rightValue);
+                        case '>':
+                            return of(leftValue > rightValue);
+                        case '<=':
+                            return of(leftValue <= rightValue);
+                        case '>=':
+                            return of(leftValue >= rightValue);
+                        case '|':
+                            return of(leftValue).pipe(rightValue);
+                        case '||':
+                            return of(leftValue || rightValue);
+                        case '&&':
+                            return of(leftValue && rightValue);
+                            
+                        }
+                    }));
+                break;
+            case 'Identifier':
+                let i = identifierIndex.get(ast.name);
+                return of(identifierValues[i]);
+            case 'Literal':
+                return of(ast.value);
+            case 'MemberExpression':
+                return evaluateAst(ast.object, identifierValues)
+                    .pipe(map(v => v[ast.property.name]));
+            case 'UnaryExpression':
+                switch(ast.operator){
+                default:
+                    throw new Error(`Unknown unary operater ${ast.operator}`);
+                case '!':
+                    return evaluateAst(ast.argument, identifierValues)
+                        .pipe(map(v => !v));
+                case '*':
+                    return evaluateAst(ast.argument, identifierValues)
+                        .pipe(mergeMap(v => v));
+                }
             }
         }
     }

@@ -303,8 +303,12 @@ let rxweb = (function(){
                             throw new Error(`Unknown operator ${ast.operator}`);
                         case '==':
                             return of(leftValue == rightValue);
+                        case '!=':
+                            return of(leftValue != rightValue);
                         case '===':
                             return of(leftValue === rightValue);
+                        case '!==':
+                            return of(leftValue !== rightValue);
                         case '<':
                             return of(leftValue < rightValue);
                         case '>':

@@ -366,11 +366,11 @@ let rxweb = (function(){
         let hook = addHookBefore(element);
         this.itemTemplate = element;
         element.parentNode.removeChild(element);
-        let {itemVariableName, itemsProviderName} = parseForExpression(element.getAttribute('rxweb-for'));
+        let {itemVariableName, itemsProviderExpression} = parseForExpression(element.getAttribute('rxweb-for'));
         this.itemVariableName = itemVariableName;
         this.rootJoints = [];
         this.itemElements = [];
-        this.observable = context[itemsProviderName]
+        this.observable = evaluateObservableExpression(jsep(itemsProviderExpression), context)
             .pipe(tap(items => {
                 for(let j of this.rootJoints){
                     j.off();
@@ -400,8 +400,8 @@ let rxweb = (function(){
     };
 
     function parseForExpression(expression){
-        let [itemVariableName, itemsProviderName] = expression.split(' of ');
-        return {itemVariableName, itemsProviderName};
+        let [itemVariableName, itemsProviderExpression] = expression.split(' of ');
+        return {itemVariableName, itemsProviderExpression};
     }
 
     ForJoint.prototype.on = function(){

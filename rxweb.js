@@ -191,7 +191,11 @@ let rxweb = (function(){
     }
 
     function getTemplate(name){
-        return document.querySelector(`template[rxweb-component=${name}]`);
+        let template = document.querySelector(`template[rxweb-component=${name}]`);
+        if(!template){
+            throw new Error(`Template element with attribute rxweb-component=${name} not found in DOM.`);
+        }
+        return template;
     }
 
     function buildProducer(producer, event, eventAttribute){

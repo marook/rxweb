@@ -338,7 +338,16 @@ let rxweb = (function(){
                 return of(ast.value);
             case 'MemberExpression':
                 return evaluateAst(ast.object, identifierValues)
-                    .pipe(map(v => v[ast.property.name]));
+                    .pipe(map(v => {
+                        switch(ast.property.type){
+                        default:
+                            throw new Error(`Unknown MemberExpression property type: ${ast.property.type}`);
+                        case 'Literal':
+                            return v[ast.property.value];
+                        case 'Identifier':
+                            return v[ast.property.name];
+                        }
+                    }));
             case 'UnaryExpression':
                 switch(ast.operator){
                 default:

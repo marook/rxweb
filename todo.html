@@ -10,13 +10,36 @@
     <todo-list
       rxweb-put-cards="cards"
       rxweb-get-added-card="addCard(event)"
-      rxweb-get-removed-card="removeCard(event)"></todo-list>
+      rxweb-get-removed-card="removeCard(event)">
+      <span class="pre">
+        &gt;
+      </span>
+      <span class="post">
+        ௐ
+        <!--
+            Nodes inside a rxweb component element are transcluded
+            content. It's context (the values available within
+            expressions) is a merge of the context of each parent rxweb
+            component in the DOM hierarchy.
+          -->
+        (<span rxweb-text-content="cards.length"></span>)
+      </span>
+    </todo-list>
   </template>
 
   <template rxweb-component="todo-list">
     <h2>List</h2>
     <ul>
       <li rxweb-for="card of cards">
+        <!--
+            rxweb-transclude without a value will copy the <todo-list>
+            child nodes into here.
+
+            An optional value can specify a query selector which is used
+            to determine the transcluded child elements within the
+            <todo-list>.
+          -->
+        <span rxweb-transclude=".pre"></span>
         <!--
             The button's rxweb-click attribute uses the * operator to
             extract the last emitted value from the card observable.
@@ -32,6 +55,7 @@
           -->
         <span rxweb-text-content="card.createdAt | date"></span>
         )
+        <span rxweb-transclude=".post"></span>
       </li>
     </ul>
     <form rxweb-submit="submitCard(event)">

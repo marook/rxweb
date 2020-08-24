@@ -1,3 +1,8 @@
+/**
+ * rxweb is a component oriented web templating framework around rxjs.
+ *
+ * rxweb.define(…) is used to define rxweb components.
+ */
 let rxweb = (function(){
     let { combineLatest, forkJoin, of } = rxjs;
     let { map, merge, mergeMap, tap, distinctUntilChanged } = rxjs.operators;
@@ -21,6 +26,7 @@ let rxweb = (function(){
         ['for', ForJoint],
         ['text-content', ElementPropertyJoint],
         ['class-name', ElementPropertyJoint],
+        ['transclude', TranscludeJoint],
     ].concat(eventJointNames.map(name => [name, EventListenerJoint]));
 
     let jointFactoryByName = new Map(jointFactories);
@@ -29,9 +35,14 @@ let rxweb = (function(){
         customElements.define(name, class extends HTMLElement {
             constructor(){
                 super();
+                this.transclusionChildren = Array.from(this.childNodes);
+                empty(this);
                 this.template = getTemplate(name).content.cloneNode(true);
+                if(!this.rxweb){
+                    this.rxweb = {};
+                }
                 let eventSubjects = new Map();
-                let getValues = (this.rxweb && this.rxweb.get) || {};
+                let getValues = this.rxweb.get || {};
                 for(let [name, subject] of Object.entries(getValues)){
                     eventSubjects.set(name, subject);
                 }
@@ -39,12 +50,16 @@ let rxweb = (function(){
                 let events = Object.fromEntries(Array.from(eventSubjects).map(([name, subject]) => [name, subject.asObservable()]));
                 let outputs = bind(events);
                 let linkObservable = linkSubjectsToObservables(getValues, outputs);
-                let putValues = (this.rxweb && this.rxweb.put) || {};
+                let putValues = this.rxweb.put || {};
                 let rootContext = Object.assign({}, putValues, events, outputs);
                 this.componentObservable = rxjs.merge(rootContext._ || rxjs.of(), linkObservable);
                 this.componentSubscription = null;
                 this.rootJoints = [];
-                appendChildJoints(this.rootJoints, this.template, rootContext, eventSubjects);
+                // publish events and outputs to be used in
+                // transclusions.
+                this.rxweb.events = events;
+                this.rxweb.context = rootContext;
+                appendChildJoints(this, this.rootJoints, this.template, rootContext, eventSubjects);
             }
 
             connectedCallback(){
@@ -70,12 +85,12 @@ let rxweb = (function(){
         });
     }
 
-    function appendChildJoints(joints, parent, context, events){
+    function appendChildJoints(component, joints, parent, context, events){
         // Array.from(…) copies the nodes before the
         // appendJoints(…) call might modify the template
         // elements and break the iteration here.
         for(let element of Array.from(parent.children)){
-            appendJoints(joints, element, context, events);
+            appendJoints(component, joints, element, context, events);
         }
     }
 
@@ -83,13 +98,13 @@ let rxweb = (function(){
      * appendJoints searches for the first layer of dynamic elements in
      * the template element.
      */
-    function appendJoints(joints, element, context, events){
+    function appendJoints(component, joints, element, context, events){
         // TODO find a good name for these "joints" we look for in this function and rename the name of the function
         let jointAttributes = Array.from(element.getAttributeNames())
             .filter(name => name.startsWith('rxweb-'))
             .map(name => name.substring('rxweb-'.length));
         if(jointAttributes.length === 0){
-            appendChildJoints(joints, element, context, events);
+            appendChildJoints(component, joints, element, context, events);
             return;
         }
         for(let jointName of jointAttributes){
@@ -110,7 +125,7 @@ let rxweb = (function(){
                 if(!jointFactory){
                     throw new Error(`Found unknown rxweb-${jointName} attribute.`);
                 }
-                let joint = new jointFactory(element, context, events, jointName);
+                let joint = new jointFactory(component, element, context, events, jointName);
                 joints.push(joint);
             }
         }
@@ -212,12 +227,12 @@ let rxweb = (function(){
         return [name, args];
     }
 
-    function IfJoint(element, context, events){
+    function IfJoint(component, element, context, events){
         this.hook = addHookBefore(element);
         this.element = element;
         this.rootJoints = [];
         this.removeElement();
-        appendChildJoints(this.rootJoints, element, context, events);
+        appendChildJoints(component, this.rootJoints, element, context, events);
         let ifExpression = element.getAttribute('rxweb-if');
         this.observable = evaluateObservableExpression(jsep(ifExpression), context)
             .pipe(
@@ -379,7 +394,7 @@ let rxweb = (function(){
         }
     };
 
-    function ForJoint(element, context, events){
+    function ForJoint(component, element, context, events){
         let hook = addHookBefore(element);
         this.itemTemplate = element;
         element.parentNode.removeChild(element);
@@ -398,7 +413,7 @@ let rxweb = (function(){
                     let itemElement = this.itemTemplate.cloneNode(true);
                     let itemContext = Object.assign({}, context);
                     itemContext[this.itemVariableName] = rxjs.of(item);
-                    appendChildJoints(this.rootJoints, itemElement, itemContext, events);
+                    appendChildJoints(component, this.rootJoints, itemElement, itemContext, events);
                     this.itemElements.push(itemElement);
                     hook.parentNode.insertBefore(itemElement, hook);
                 }
@@ -440,7 +455,7 @@ let rxweb = (function(){
         }
     };
 
-    function ElementPropertyJoint(element, context, events, name){
+    function ElementPropertyJoint(component, element, context, events, name){
         this.element = element;
         let consumerExpression = element.getAttribute(`rxweb-${name}`);
         let nameCamelCase = camelCase(name);
@@ -462,7 +477,60 @@ let rxweb = (function(){
         }
     };
 
-    function EventListenerJoint(element, context, events, name){
+    function TranscludeJoint(component, element, context, events){
+        this.component = component;
+        this.element = element;
+        this.transclusionSelector = element.getAttribute('rxweb-transclude');
+        this.childElementsCreated = false;
+        this.rootJoints = [];
+    }
+
+    TranscludeJoint.prototype.on = function(){
+        if(!this.childElementsCreated){
+            this.childElementsCreated = true;
+            let transcludedNodes = this.component.transclusionChildren;
+            if(this.transclusionSelector){
+                transcludedNodes = transcludedNodes
+                    .filter(n => isElement(n) && n.matches(this.transclusionSelector));
+            }
+            // TODO maybe build these scopes lazy if they are required
+            // by any child
+            let events = this._buildScope('events');
+            let context = this._buildScope('context');
+            for(let childTemplate of transcludedNodes){
+                let child = childTemplate.cloneNode(true);
+                if(isElement(child)){
+                    appendChildJoints(this.component, this.rootJoints, child, context, events);
+                }
+                this.element.appendChild(child);
+            }
+        }
+        for(let j of this.rootJoints){
+            j.on();
+        }
+    };
+
+    TranscludeJoint.prototype._buildScope = function(name){
+        let scopes = [];
+        let element = this.component.parentElement;
+        while(element){
+            if(element.rxweb){
+                scopes.push(element.rxweb[name]);
+            }
+            element = element.parentElement;
+        }
+        scopes.push({});
+        scopes.reverse();
+        return Object.assign.apply(Object, scopes);
+    };
+
+    TranscludeJoint.prototype.off = function(){
+        for(let j of this.rootJoints){
+            j.off();
+        }
+    };
+
+    function EventListenerJoint(component, element, context, events, name){
         this.element = element;
         this.context = context;
         this.name = name;
@@ -516,6 +584,10 @@ let rxweb = (function(){
             .replace(/-(.)/g, (m, g1) => {
                 return g1.toUpperCase();
             });
+    }
+
+    function isElement(o){
+        return typeof HTMLElement === 'object' ? o instanceof HTMLElement : o && typeof o === 'object' && o !== null && o.nodeType === 1 && typeof o.nodeName === 'string';
     }
 
     function empty(node){

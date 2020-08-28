@@ -1,7 +1,8 @@
 /**
  * rxweb is a component oriented web templating framework around rxjs.
  *
- * rxweb.define(…) is used to define rxweb components.
+ * The main entry point is rxweb.define(…) which is used to define
+ * rxweb components.
  */
 let rxweb = (function(){
     let { combineLatest, forkJoin, of } = rxjs;
@@ -31,6 +32,20 @@ let rxweb = (function(){
 
     let jointFactoryByName = new Map(jointFactories);
 
+    let jointPriorityByName = new Map(jointFactories.map((f, i) => [f[0], i]));
+
+    /**
+     * defines a rxweb component.
+     *
+     * The bind callback is provided with the component's context. The
+     * context contains Observables which provide events. Events may
+     * be either caused from within the component. For example click
+     * handlers within the component's template. Events can also be
+     * provided from components wrapping this component using
+     * rxweb-put-* attributes. The bind callback may return an object
+     * which provides Observables to be used within the component's
+     * template.
+     */
     function define(name, bind){
         customElements.define(name, class extends HTMLElement {
             constructor(){
@@ -48,9 +63,9 @@ let rxweb = (function(){
                 }
                 addEventSubjects(eventSubjects, this.template);
                 let events = Object.fromEntries(Array.from(eventSubjects).map(([name, subject]) => [name, subject.asObservable()]));
-                let outputs = bind(events);
-                let linkObservable = linkSubjectsToObservables(getValues, outputs);
                 let putValues = this.rxweb.put || {};
+                let outputs = bind(Object.assign({}, putValues, events)) || {};
+                let linkObservable = linkSubjectsToObservables(getValues, outputs);
                 let rootContext = Object.assign({}, putValues, events, outputs);
                 this.componentObservable = rxjs.merge(rootContext._ || rxjs.of(), linkObservable);
                 this.componentSubscription = null;
@@ -107,7 +122,20 @@ let rxweb = (function(){
             appendChildJoints(component, joints, element, context, events);
             return;
         }
-        for(let jointName of jointAttributes){
+        jointAttributes.sort((l, r) => {
+            let lp = getJointPriority(l);
+            let rp = getJointPriority(r);
+            if(lp < rp){
+                return -1;
+            }
+            if(rp < lp){
+                return 1;
+            }
+            return 0;
+        });
+        let jointAttributesLen = jointAttributes.length;
+        for(let i = 0; i < jointAttributesLen; ++i){
+            let jointName = jointAttributes[i];
             if(jointName.startsWith('get-')){
                 let producerExpression = element.getAttribute(`rxweb-${jointName}`);
                 let [producerName, producerArgs] = parseProducerExpression(producerExpression);
@@ -120,13 +148,23 @@ let rxweb = (function(){
                 let elementContext = getRxwebElementContext();
                 elementContext.put[remoteName] = context[localName];
             } else {
-                let jointName = jointAttributes[0];
                 let jointFactory = jointFactoryByName.get(jointName);
                 if(!jointFactory){
                     throw new Error(`Found unknown rxweb-${jointName} attribute.`);
                 }
                 let joint = new jointFactory(component, element, context, events, jointName);
                 joints.push(joint);
+                if(jointFactory.terminal && i < jointAttributesLen-1){
+                    // for the sake of rxweb simplicity the
+                    // combination of terminal joints and regular
+                    // joints is not allowed. this avoids having to
+                    // treat other joints on the element with the
+                    // terminal joint as child joints. for example the
+                    // terminal rxweb-if joint would need to turn the
+                    // rxweb-text-content joint on and off like a
+                    // child joint.
+                    throw new Error(`rxweb-${jointName} together with rxweb-${jointAttributes[i+1]} is not allowed on one element.`);
+                }
             }
         }
 
@@ -142,6 +180,13 @@ let rxweb = (function(){
             }
             return element.rxweb;
         }
+    }
+
+    function getJointPriority(jointName){
+        if(jointName.startsWith('get-') || jointName.startsWith('set-')){
+            return -1;
+        }
+        return jointPriorityByName.get(jointName);
     }
 
     function addEventSubjects(subjects, element){
@@ -254,6 +299,8 @@ let rxweb = (function(){
             );
         this.subscription = null;
     }
+
+    IfJoint.terminal = true;
 
     IfJoint.prototype.addElement = function(){
         this.hook.parentNode.insertBefore(this.element, this.hook);
@@ -423,6 +470,8 @@ let rxweb = (function(){
             }));
         this.subcription = null;
     }
+
+    ForJoint.terminal = true;
 
     ForJoint.prototype.removeFormerItemElements = function(){
         for(let element of this.itemElements){

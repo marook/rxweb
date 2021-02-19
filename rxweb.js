@@ -148,7 +148,7 @@ let rxweb = (function(){
                 let elementContext = getRxwebElementContext();
                 elementContext.put[remoteName] = context[localName];
             } else {
-                let jointFactory = jointFactoryByName.get(jointName);
+                let jointFactory = jointName.startsWith('style-') ? StylePropertyJoint : jointFactoryByName.get(jointName);
                 if(!jointFactory){
                     throw new Error(`Found unknown rxweb-${jointName} attribute.`);
                 }
@@ -520,6 +520,29 @@ let rxweb = (function(){
     };
 
     ElementPropertyJoint.prototype.off = function(){
+        if(this.subscription){
+            this.subscription.unsubscribe();
+            this.subscription = null;
+        }
+    };
+
+    // TODO StylePropertyJoint is 90% the implementation of ElementPropertyJoint and should be centralized
+    function StylePropertyJoint(component, element, context, events, name){
+        this.element = element;
+        let consumerExpression = element.getAttribute(`rxweb-${name}`);
+        let nameCamelCase = camelCase(name.substring('style-'.length));
+        this.observable = evaluateObservableExpression(jsep(consumerExpression), context)
+            .pipe(tap(value => element.style[nameCamelCase] = value));
+        this.subscription = null;
+    }
+
+    StylePropertyJoint.prototype.on = function(){
+        if(!this.subscription){
+            this.subscription = this.observable.subscribe();
+        }
+    };
+
+    StylePropertyJoint.prototype.off = function(){
         if(this.subscription){
             this.subscription.unsubscribe();
             this.subscription = null;

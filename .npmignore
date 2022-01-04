@@ -4,3 +4,9 @@
 /todo*
 /Makefile
 *.spec.js
+/release.sh
+*~
+/dist/demo*
+/dist/todo*
+/karma.conf.js
+/webpack.config.js

@@ -14,5 +14,5 @@ then
 fi
 npm run build
 git tag "${version}"
-npm publish --dry-run
+npm publish
 git push origin "${version}"

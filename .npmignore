@@ -1,0 +1,6 @@
+/backlog
+/demo*
+/doc
+/todo*
+/Makefile
+*.spec.js

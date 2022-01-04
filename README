@@ -4,6 +4,7 @@ rxweb - A reactive web framework
 2) Getting started
 3) Tests
 4) Installation in perkeep
+5) License
 
 
 ------------------------------------------------------------------------
@@ -45,3 +46,9 @@ Installation in perkeep
 Installation in perkeep broke with migration to webpack.
 
 $ make install
+
+
+------------------------------------------------------------------------
+License
+
+See file COPYING.

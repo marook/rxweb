@@ -1,8 +1,9 @@
-let { merge, of } = rxjs;
-let { map, tap } = rxjs.operators;
+import { merge, of, BehaviorSubject } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import * as rxweb from '.';
 
 rxweb.define('todo-board', events => {
-    let cardsSubject = new rxjs.BehaviorSubject([
+    let cardsSubject = new BehaviorSubject([
         {
             createdAt: new Date(2019, 11, 1),
             title: 'bring out trash',

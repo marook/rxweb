@@ -15,6 +15,13 @@ rxweb is a templating library around rxjs and web components.
 ------------------------------------------------------------------------
 Getting started
 
+Bundle the demo and todo applications:
+
+$ npm run build-demo
+$ npm run build-todo
+
+Then open the demo.html and todo.html files in your browser.
+
 You should probably read the following files in the given order:
 1. demo.html
 2. demo.js
@@ -34,5 +41,7 @@ $ npm test
 
 ------------------------------------------------------------------------
 Installation in perkeep
+
+Installation in perkeep broke with migration to webpack.
 
 $ make install

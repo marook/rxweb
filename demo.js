@@ -1,11 +1,13 @@
-let { map, takeUntil } = rxjs.operators;
+import { BehaviorSubject } from 'rxjs';
+import { map, takeUntil } from 'rxjs/operators';
+import * as rxweb from '.';
 
 // defines a custom component. the second argument is a binding callback
 // which will be invoked once for every component instance. events
 // contains observables for all events which are produced within the
 // component. they are determined from the component's template.
 rxweb.define('my-comp', events => {
-    let counter = new rxjs.BehaviorSubject(0);
+    let counter = new BehaviorSubject(0);
     // return output observables which are accessed within the template.
     return {
         // the _ output has a special meaning. it will be subscribed
